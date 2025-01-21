@@ -156,7 +156,7 @@ curl -X POST http://localhost:8000/predict \
 ![Image](https://github.com/user-attachments/assets/d3830aad-d39a-480c-966e-99ee73a8850a)
 
 ### Predict Endpoint Response
-[Add screenshot showing successful prediction response in Postman]
+![Image](https://github.com/user-attachments/assets/543a0b7d-03f2-4d77-b46a-a78d3051e8bb)
 
 ## Model Performance
 
