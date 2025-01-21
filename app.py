@@ -29,23 +29,24 @@ app.add_middleware(
 )
 
 class PredictionInput(BaseModel):
-    Machine_ID: str = Field(..., description="Machine identifier")
-    Hydraulic_Pressure: float = Field(..., alias='Hydraulic_Pressure(bar)', ge=0, description="Hydraulic pressure reading in bar")
-    Coolant_Pressure: float = Field(..., alias='Coolant_Pressure(bar)', ge=0, description="Coolant pressure reading in bar")
-    Air_System_Pressure: float = Field(..., alias='Air_System_Pressure(bar)', ge=0, description="Air system pressure reading in bar")
-    Coolant_Temperature: float = Field(..., ge=0, description="Coolant temperature reading")
-    Hydraulic_Oil_Temperature: float = Field(..., alias='Hydraulic_Oil_Temperature(?C)', ge=0, description="Hydraulic oil temperature in °C")
-    Spindle_Bearing_Temperature: float = Field(..., alias='Spindle_Bearing_Temperature(?C)', ge=0, description="Spindle bearing temperature in °C")
-    Spindle_Vibration: float = Field(..., alias='Spindle_Vibration(?m)', ge=0, description="Spindle vibration reading in µm")
-    Tool_Vibration: float = Field(..., alias='Tool_Vibration(?m)', ge=0, description="Tool vibration reading in µm")
-    Spindle_Speed: float = Field(..., alias='Spindle_Speed(RPM)', ge=0, description="Spindle speed in RPM")
-    Voltage: float = Field(..., alias='Voltage(volts)', ge=0, description="Voltage reading in volts")
-    Torque: float = Field(..., alias='Torque(Nm)', ge=0, description="Torque reading in Nm")
-    Cutting: float = Field(..., alias='Cutting(kN)', ge=0, description="Cutting force in kN")
+    Date: Optional[str] = None
+    Machine_ID: str
+    Assembly_Line_No: Optional[str] = None
+    Hydraulic_Pressure: Optional[float] = Field(None, alias='Hydraulic_Pressure(bar)')
+    Coolant_Pressure: Optional[float] = Field(None, alias='Coolant_Pressure(bar)')
+    Air_System_Pressure: Optional[float] = Field(None, alias='Air_System_Pressure(bar)')
+    Coolant_Temperature: float
+    Hydraulic_Oil_Temperature: Optional[float] = Field(None, alias='Hydraulic_Oil_Temperature(?C)')
+    Spindle_Bearing_Temperature: Optional[float] = Field(None, alias='Spindle_Bearing_Temperature(?C)')
+    Spindle_Vibration: Optional[float] = Field(None, alias='Spindle_Vibration(?m)')
+    Tool_Vibration: Optional[float] = Field(None, alias='Tool_Vibration(?m)')
+    Spindle_Speed: Optional[float] = Field(None, alias='Spindle_Speed(RPM)')
+    Voltage: Optional[float] = Field(None, alias='Voltage(volts)')
+    Torque: Optional[float] = Field(None, alias='Torque(Nm)')
+    Cutting: Optional[float] = Field(None, alias='Cutting(kN)')
 
     class Config:
         allow_population_by_field_name = True
-
 
     @validator('Machine_ID')
     def validate_machine_id(cls, v):
@@ -53,6 +54,33 @@ class PredictionInput(BaseModel):
         if v not in valid_ids:
             raise ValueError(f'Machine_ID must be one of {valid_ids}')
         return v
+
+    def dict(self, *args, **kwargs):
+        d = super().dict(*args, **kwargs)
+        # Convert aliased field names to original names if they exist
+        if d.get('Hydraulic_Pressure') is not None:
+            d['Hydraulic_Pressure(bar)'] = d.pop('Hydraulic_Pressure')
+        if d.get('Coolant_Pressure') is not None:
+            d['Coolant_Pressure(bar)'] = d.pop('Coolant_Pressure')
+        if d.get('Air_System_Pressure') is not None:
+            d['Air_System_Pressure(bar)'] = d.pop('Air_System_Pressure')
+        if d.get('Hydraulic_Oil_Temperature') is not None:
+            d['Hydraulic_Oil_Temperature(?C)'] = d.pop('Hydraulic_Oil_Temperature')
+        if d.get('Spindle_Bearing_Temperature') is not None:
+            d['Spindle_Bearing_Temperature(?C)'] = d.pop('Spindle_Bearing_Temperature')
+        if d.get('Spindle_Vibration') is not None:
+            d['Spindle_Vibration(?m)'] = d.pop('Spindle_Vibration')
+        if d.get('Tool_Vibration') is not None:
+            d['Tool_Vibration(?m)'] = d.pop('Tool_Vibration')
+        if d.get('Spindle_Speed') is not None:
+            d['Spindle_Speed(RPM)'] = d.pop('Spindle_Speed')
+        if d.get('Voltage') is not None:
+            d['Voltage(volts)'] = d.pop('Voltage')
+        if d.get('Torque') is not None:
+            d['Torque(Nm)'] = d.pop('Torque')
+        if d.get('Cutting') is not None:
+            d['Cutting(kN)'] = d.pop('Cutting')
+        return d
 
 FILE_SIZE_LIMIT = 10 * 1024 * 1024  # 10MB
 

@@ -6,84 +6,74 @@ from typing import Dict, Any
 from src.exception import CustomException
 from src.utils import load_object
 from src.logger import logging
+from sklearn.preprocessing import LabelEncoder
 
 class PredictionPipeline:
     def __init__(self):
         self.model_path = os.path.join("artifacts", "model.pkl")
         self.preprocessor_path = os.path.join("artifacts", "preprocessor.pkl")
+        self.machine_le = LabelEncoder()
+        self.machine_le.fit(['M1', 'M2', 'M3', 'Makino-L1-Unit1-2013', 'Makino-L2-Unit1-2015', 'Makino-L3-Unit1-2015'])
+        
+        # Define the expected feature order
+        self.expected_features = [
+            'Machine_ID',
+            'Hydraulic_Pressure(bar)',
+            'Coolant_Pressure(bar)',
+            'Air_System_Pressure(bar)',
+            'Coolant_Temperature',
+            'Hydraulic_Oil_Temperature(?C)',
+            'Spindle_Bearing_Temperature(?C)',
+            'Spindle_Vibration(?m)',
+            'Tool_Vibration(?m)',
+            'Spindle_Speed(RPM)',
+            'Voltage(volts)',
+            'Torque(Nm)',
+            'Cutting(kN)'
+        ]
 
     def validate_input(self, features: Dict[str, Any]) -> None:
-        """
-        Validate input features
-        """
-        required_features = {
-            'Machine_ID': str,
-            'Hydraulic_Pressure': float,
-            'Coolant_Pressure': float,
-            'Air_System_Pressure': float,
-            'Coolant_Temperature': float,
-            'Hydraulic_Oil_Temperature': float,
-            'Spindle_Bearing_Temperature': float,
-            'Spindle_Vibration': float,
-            'Tool_Vibration': float,
-            'Spindle_Speed': float,
-            'Voltage': float,
-            'Torque': float,
-            'Cutting': float
-        }
+        required_features = set(self.expected_features)
+        features = {k: v for k, v in features.items() if k not in ['Date', 'Assembly_Line_No']}
+        
+        if not required_features.issubset(features.keys()):
+            missing = required_features - set(features.keys())
+            raise ValueError(f"Missing required features: {list(missing)}")
 
-        # Check for missing features
-        missing_features = [feat for feat in required_features if feat not in features]
-        if missing_features:
-            raise ValueError(f"Missing required features: {missing_features}")
-
-        # Validate data types and ranges
-        for feat, feat_type in required_features.items():
-            try:
-                features[feat] = feat_type(features[feat])
-                if feat_type == float and (features[feat] < 0 or features[feat] > 1000000):
-                    raise ValueError(f"Value for {feat} is out of reasonable range")
-            except (ValueError, TypeError):
-                raise ValueError(f"Invalid type for {feat}. Expected {feat_type.__name__}")
+        for feat, value in features.items():
+            if feat != 'Machine_ID':
+                try:
+                    value = float(value)
+                    if value < 0 or value > 1000000:
+                        raise ValueError(f"Value for {feat} is out of reasonable range")
+                except (ValueError, TypeError):
+                    raise ValueError(f"Invalid numeric value for {feat}")
 
     def predict(self, features: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Make predictions using the trained model
-        """
         try:
-            # Validate input features
+            features = {k: v for k, v in features.items() if k not in ['Date', 'Assembly_Line_No']}
             self.validate_input(features)
             
-            # Load preprocessor and model
             if not os.path.exists(self.model_path) or not os.path.exists(self.preprocessor_path):
                 raise FileNotFoundError("Model or preprocessor files not found. Please train the model first.")
 
-            preprocessor_dict = load_object(self.preprocessor_path)
+            preprocessor = load_object(self.preprocessor_path)
             model = load_object(self.model_path)
             
-            # Convert features to DataFrame
-            features_df = pd.DataFrame([features])
+            # Create DataFrame with features in the correct order
+            features_df = pd.DataFrame([{feature: features[feature] for feature in self.expected_features}])
+            
+            # Apply label encoding to Machine_ID
+            features_df['Machine_ID'] = self.machine_le.transform(features_df['Machine_ID'])
 
-            # Apply preprocessing
-            # Label encoding
-            for column, le in preprocessor_dict['label_encoders'].items():
-                if column in features_df.columns:
-                    try:
-                        features_df[column] = le.transform(features_df[column])
-                    except ValueError:
-                        # Handle unknown categories
-                        logging.warning(f"Unknown category in {column}. Using -1 as default.")
-                        features_df[column] = -1
-
-            # Scale features
-            scaled_features = preprocessor_dict['scaler'].transform(features_df)
+            # Scale features using the loaded preprocessor
+            scaled_features = preprocessor.transform(features_df)
 
             # Make prediction
             pred = model.predict(scaled_features)
             pred_proba = model.predict_proba(scaled_features)
 
-            # Convert prediction using label encoder
-            prediction = preprocessor_dict['label_encoders']['Downtime'].inverse_transform(pred)[0]
+            prediction = "Yes" if pred[0] == 1 else "No"
             confidence = float(max(pred_proba[0]))
 
             return {
