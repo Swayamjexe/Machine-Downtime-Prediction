@@ -153,7 +153,7 @@ curl -X POST http://localhost:8000/predict \
 ![Image](https://github.com/user-attachments/assets/1a382409-422a-4f44-a89c-97b19088f90b)
 
 ### Train Endpoint Response
-[Add screenshot showing successful training response in Postman]
+![Image](https://github.com/user-attachments/assets/d3830aad-d39a-480c-966e-99ee73a8850a)
 
 ### Predict Endpoint Response
 [Add screenshot showing successful prediction response in Postman]
